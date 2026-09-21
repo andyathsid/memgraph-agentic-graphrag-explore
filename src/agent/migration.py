@@ -389,7 +389,7 @@ def _rate_limited_call(
             retry_after = headers.get("retry-after") or headers.get("Retry-After")
             try:
                 delay = max(1.0, float(retry_after))
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 delay = min(60.0, 2.0**attempt)
             sleeper(delay)
     raise AssertionError("unreachable")

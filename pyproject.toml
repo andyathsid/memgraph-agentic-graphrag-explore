@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "memgraph-agentic-graphrag-explore"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "aegra-cli>=0.10.5",
     "langchain>=1.4.2",

@@ -8,9 +8,9 @@ from langchain_memgraph.graphs.memgraph import MemgraphLangChain
 from langchain_openai import OpenAIEmbeddings
 from langchain_openrouter import ChatOpenRouter
 
-from .config import AgentSettings
-from .prompts import SYSTEM_PROMPT
-from .tools import create_memgraph_tools
+from agent.config import AgentSettings
+from agent.prompts import SYSTEM_PROMPT
+from agent.tools import create_memgraph_tools
 
 
 def build_agent(settings: AgentSettings):
