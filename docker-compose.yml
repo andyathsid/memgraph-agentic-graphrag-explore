@@ -1,0 +1,81 @@
+name: memgraph-agentic-graphrag-explore
+
+include:
+  - compose.db.yml
+
+# Docker Compose - Memgraph + PostgreSQL + Redis + API
+# aegra dev  -> docker compose up memgraph postgres -d  (databases, in-memory broker)
+# aegra up   -> docker compose up --build      (full stack, Redis broker)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: memgraph_agentic_graphrag_explore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-memgraph_agentic_graphrag_explore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memgraph_agentic_graphrag_explore_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-memgraph_agentic_graphrag_explore}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memgraph_agentic_graphrag_explore}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: memgraph_agentic_graphrag_explore-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  memgraph_agentic_graphrag_explore:
+    build: .
+    container_name: memgraph_agentic_graphrag_explore-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-2026}:${PORT:-2026}"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-memgraph_agentic_graphrag_explore}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-memgraph_agentic_graphrag_explore_secret}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-memgraph_agentic_graphrag_explore}
+      - AEGRA_CONFIG=aegra.json
+      - AUTH_TYPE=${AUTH_TYPE:-noop}
+      - PORT=${PORT:-2026}
+      - REDIS_BROKER_ENABLED=true
+      - REDIS_URL=redis://redis:6379/0
+      - MEMGRAPH_URI=bolt://memgraph:7687
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      memgraph:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:${PORT:-2026}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./src:/app/src:ro
+      - ./aegra.json:/app/aegra.json:ro
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,45 @@
+name: memgraph-agentic-graphrag-explore
+
+services:
+  neo4j:
+    image: neo4j:5.26.30
+    container_name: memgraph-agentic-graphrag-explore-neo4j
+    profiles: ["migration"]
+
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
+      NEO4J_PLUGINS: '["apoc"]'
+
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+    restart: unless-stopped
+
+  memgraph:
+    image: memgraph/memgraph-mage:3.13.1
+    container_name: memgraph-agentic-graphrag-explore-memgraph
+    ports:
+      - "127.0.0.1:7688:7687"
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+    command:
+      - "--storage-properties-on-edges=true"
+      - "--storage-snapshot-interval-sec=300"
+      - "--storage-snapshot-on-exit=true"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole --host 127.0.0.1 --port 7687 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  memgraph_data:

@@ -1,0 +1,9 @@
+{
+  "name": "memgraph-agentic-graphrag-explore",
+  "dependencies": [
+    "./src"
+  ],
+  "graphs": {
+    "memgraph_agentic_graphrag_explore": "./src/agent/graph.py:graph"
+  }
+}

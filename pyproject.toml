@@ -1,0 +1,39 @@
+[build-system]
+requires = ["uv_build>=0.10.0,<0.12.0"]
+build-backend = "uv_build"
+
+[project]
+name = "memgraph-agentic-graphrag-explore"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "aegra-cli>=0.10.5",
+    "langchain>=1.4.2",
+    "langchain-memgraph>=0.1.15",
+    "langchain-openai>=1.6.2",
+    "langchain-openrouter>=0.2.8",
+    "neo4j>=6.3.1",
+    "python-dotenv>=1.2.3",
+    "tqdm>=4.67.3",
+]
+
+[project.scripts]
+migrate-recommendations = "agent.migration:main"
+backfill-memgraph-embeddings = "agent.migration:backfill_main"
+
+[tool.uv]
+package = true
+
+[tool.uv.build-backend]
+module-name = "agent"
+module-root = "src"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that require live databases and external model APIs",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
