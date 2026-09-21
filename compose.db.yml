@@ -38,6 +38,17 @@ services:
       retries: 12
       start_period: 10s
     restart: unless-stopped
+  lab:
+    image: memgraph/lab
+    container_name: memgraph-agentic-graphrag-explore-lab
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      QUICK_CONNECT_MG_HOST: memgraph
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   neo4j_data:
