@@ -22,7 +22,7 @@ The agent provides two tools:
 ## Requirements
 
 - Docker with Docker Compose
-- Python 3.14
+- Python 3.13
 - [uv](https://docs.astral.sh/uv/)
 - Bash, Git, and Git LFS
 - An [OpenRouter](https://openrouter.ai/) API key
@@ -81,12 +81,41 @@ docker compose -f compose.db.yml stop neo4j
 
 ### 5. Run the application
 
+Run Aegra locally with hot reload:
+
+```sh
+docker compose up -d postgres memgraph
+uv run aegra dev
+```
+
+Aegra loads `.env` and applies PostgreSQL migrations automatically.
+
+Alternatively, run the complete stack in Docker:
+
 ```sh
 docker compose up -d --build
 ```
 
 This starts Memgraph, PostgreSQL, Redis, and the Aegra API. Neo4j remains
-stopped unless the `migration` profile is enabled.
+stopped unless the `migration` profile is enabled. Compose changes the Aegra
+database host from `localhost` to the `postgres` service automatically.
+
+### 6. Chat with the agent
+
+After Aegra is running, you can interact with the agent through
+[LangChain Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui). In
+the connection form, use:
+
+- Deployment URL: `http://localhost:2026`
+- Assistant / Graph ID: `memgraph_agentic_graphrag_explore`
+
+A LangSmith API key is not required when connecting to the local Aegra server.
+
+![Agent Chat UI connection settings](images/agent-chat-ui-1.png)
+
+You can then chat with the agent and inspect its answers and tool calls:
+
+![Agent Chat UI showing movie search results](images/agent-chat-ui-2.png)
 
 ## Data persistence
 
