@@ -7,8 +7,8 @@ which is restored into Neo4j and then migrated to Memgraph.
 
 The agent provides two tools:
 
-- `search_movies` performs semantic movie search with Memgraph's vector index.
-- `query_movie_graph` generates and runs read-only Cypher against Memgraph.
+- `search_movies`  implements vector search. It performs semantic movie searches using Memgraph’s vector index.
+- `query_movie_graph` implements text-to-Cypher. It asks the LLM to generate a read-only Cypher query for the requested movie information, then runs the query against Memgraph to retrieve the results.
 
 ## Project structure
 
@@ -117,15 +117,9 @@ You can then chat with the agent and inspect its answers and tool calls:
 
 ![Agent Chat UI showing movie search results](images/agent-chat-ui-2.png)
 
-## Data persistence
+## Guardrails
 
-Neo4j and Memgraph use Docker volumes. Normal restarts and
-`docker compose down` preserve their data. Running `docker compose down -v`
-deletes the volumes and their data.
-
-## Safety or Guardrails
-
-Generated Cypher is limited to one read-only statement. Mutation,
+Generated Cypher for `query_movie_graph` tool is limited to one read-only statement. Mutation,
 administration, procedure, and `LOAD CSV` clauses are rejected before the query
 is sent to Memgraph.
 
