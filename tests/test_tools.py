@@ -6,6 +6,7 @@ import pytest
 
 from agent.prompts import SYSTEM_PROMPT
 from agent.tools import (
+    ReadOnlyCypherError,
     SEARCH_MOVIES_QUERY,
     create_memgraph_tools,
     validate_read_only_cypher,
@@ -104,7 +105,7 @@ def test_text_to_cypher_refreshes_schema_returns_query_and_hides_vectors():
     ],
 )
 def test_read_only_validator_rejects_mutation_and_multiple_statements(query):
-    with pytest.raises(ValueError):
+    with pytest.raises(ReadOnlyCypherError):
         validate_read_only_cypher(query)
 
 

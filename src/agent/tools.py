@@ -61,6 +61,10 @@ _MUTATING_CLAUSE_PATTERNS = {
 }
 
 
+class ReadOnlyCypherError(ValueError):
+    """Raised when generated Cypher violates the read-only query policy."""
+
+
 def _strip_literals_and_comments(query: str) -> str:
     """Remove content that should not participate in clause checks."""
     visible_characters: list[str] = []
@@ -108,11 +112,11 @@ def _strip_literals_and_comments(query: str) -> str:
 def validate_read_only_cypher(query: str) -> str:
     query = query.strip()
     if not query:
-        raise ValueError("The model generated an empty Cypher query")
+        raise ReadOnlyCypherError("The model generated an empty Cypher query")
 
     query_without_literals = _strip_literals_and_comments(query)
     if not _READ_PREFIX_PATTERN.match(query_without_literals):
-        raise ValueError("Only read-only graph queries are allowed")
+        raise ReadOnlyCypherError("Only read-only graph queries are allowed")
 
     statements = [
         statement
@@ -120,11 +124,13 @@ def validate_read_only_cypher(query: str) -> str:
         if statement.strip()
     ]
     if len(statements) != 1:
-        raise ValueError("Only one Cypher statement is allowed")
+        raise ReadOnlyCypherError("Only one Cypher statement is allowed")
 
     for clause, pattern in _MUTATING_CLAUSE_PATTERNS.items():
         if pattern.search(query_without_literals):
-            raise ValueError(f"Read-only policy rejected the {clause} clause")
+            raise ReadOnlyCypherError(
+                f"Read-only policy rejected the {clause} clause"
+            )
 
     return query.rstrip("; ")
 

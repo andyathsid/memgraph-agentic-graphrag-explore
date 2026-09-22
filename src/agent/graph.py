@@ -9,6 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openrouter import ChatOpenRouter
 
 from agent.config import AgentSettings
+from agent.guardrails import cypher_validation_middleware
 from agent.prompts import SYSTEM_PROMPT
 from agent.tools import create_memgraph_tools
 
@@ -46,7 +47,8 @@ def build_agent(settings: AgentSettings):
         model=model,
         tools=tools,
         system_prompt=SYSTEM_PROMPT,
-        name="agent"
+        middleware=[cypher_validation_middleware],
+        name="agent",
     )
 
 
