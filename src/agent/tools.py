@@ -49,62 +49,83 @@ _MUTATING_CLAUSES = (
     "START",
     "STOP",
 )
-_READ_PREFIX = re.compile(
+_READ_PREFIX_PATTERN = re.compile(
     r"^\s*(?:OPTIONAL\s+MATCH|MATCH|WITH|UNWIND|RETURN)\b", re.IGNORECASE
 )
+_MUTATING_CLAUSE_PATTERNS = {
+    clause: re.compile(
+        r"\b" + r"\s+".join(map(re.escape, clause.split())) + r"\b",
+        re.IGNORECASE,
+    )
+    for clause in _MUTATING_CLAUSES
+}
 
 
 def _strip_literals_and_comments(query: str) -> str:
     """Remove content that should not participate in clause checks."""
-    result: list[str] = []
-    index = 0
-    while index < len(query):
-        if query.startswith("//", index):
-            end = query.find("\n", index + 2)
-            index = len(query) if end < 0 else end
-            result.append(" ")
+    visible_characters: list[str] = []
+    position = 0
+
+    while position < len(query):
+        if query.startswith("//", position):
+            comment_end = query.find("\n", position + 2)
+            position = len(query) if comment_end < 0 else comment_end
+            visible_characters.append(" ")
             continue
-        if query.startswith("/*", index):
-            end = query.find("*/", index + 2)
-            index = len(query) if end < 0 else end + 2
-            result.append(" ")
+
+        if query.startswith("/*", position):
+            comment_end = query.find("*/", position + 2)
+            position = len(query) if comment_end < 0 else comment_end + 2
+            visible_characters.append(" ")
             continue
-        character = query[index]
+
+        character = query[position]
         if character in ("'", '"', "`"):
             quote = character
-            index += 1
-            while index < len(query):
-                if query[index] == "\\":
-                    index += 2
+            position += 1
+
+            while position < len(query):
+                if query[position] == "\\":
+                    position += 2
                     continue
-                if query[index] == quote:
-                    if index + 1 < len(query) and query[index + 1] == quote:
-                        index += 2
+                if query[position] == quote:
+                    if position + 1 < len(query) and query[position + 1] == quote:
+                        position += 2
                         continue
-                    index += 1
+                    position += 1
                     break
-                index += 1
-            result.append(" ")
+                position += 1
+
+            visible_characters.append(" ")
             continue
-        result.append(character)
-        index += 1
-    return "".join(result)
+
+        visible_characters.append(character)
+        position += 1
+
+    return "".join(visible_characters)
 
 
 def validate_read_only_cypher(query: str) -> str:
     query = query.strip()
     if not query:
         raise ValueError("The model generated an empty Cypher query")
-    normalized = _strip_literals_and_comments(query)
-    if not _READ_PREFIX.match(normalized):
+
+    query_without_literals = _strip_literals_and_comments(query)
+    if not _READ_PREFIX_PATTERN.match(query_without_literals):
         raise ValueError("Only read-only graph queries are allowed")
-    statements = [part for part in normalized.split(";") if part.strip()]
+
+    statements = [
+        statement
+        for statement in query_without_literals.split(";")
+        if statement.strip()
+    ]
     if len(statements) != 1:
         raise ValueError("Only one Cypher statement is allowed")
-    for clause in _MUTATING_CLAUSES:
-        pattern = r"\b" + r"\s+".join(map(re.escape, clause.split())) + r"\b"
-        if re.search(pattern, normalized, re.IGNORECASE):
+
+    for clause, pattern in _MUTATING_CLAUSE_PATTERNS.items():
+        if pattern.search(query_without_literals):
             raise ValueError(f"Read-only policy rejected the {clause} clause")
+
     return query.rstrip("; ")
 
 
@@ -116,7 +137,11 @@ def extract_cypher(response: Any) -> str:
             for block in content
         )
     text = str(content).strip()
-    fenced = re.search(r"```(?:cypher)?\s*(.*?)```", text, re.IGNORECASE | re.DOTALL)
+    fenced = re.search(
+        r"```(?:cypher)?\s*(.*?)```",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
     if fenced:
         text = fenced.group(1).strip()
     text = re.sub(r"^\s*cypher\s*:\s*", "", text, flags=re.IGNORECASE)
@@ -159,14 +184,12 @@ def create_memgraph_tools(
                 f"Expected a {embedding_dimensions}-dimension query embedding, "
                 f"got {len(query_vector)}"
             )
-        rows = graph.query(
-            SEARCH_MOVIES_QUERY,
-            {
-                "index_name": vector_index,
-                "top_k": top_k,
-                "query_vector": query_vector,
-            },
-        )
+        parameters = {
+            "index_name": vector_index,
+            "top_k": top_k,
+            "query_vector": query_vector,
+        }
+        rows = graph.query(SEARCH_MOVIES_QUERY, parameters)
         return [_without_embeddings(dict(row)) for row in rows]
 
     @tool("query_movie_graph")
@@ -179,7 +202,8 @@ def create_memgraph_tools(
             schema=graph.get_schema,
             question=question,
         )
-        cypher = validate_read_only_cypher(extract_cypher(cypher_model.invoke(prompt)))
+        response = cypher_model.invoke(prompt)
+        cypher = validate_read_only_cypher(extract_cypher(response))
         rows = graph.query(cypher)
         return {
             "cypher": cypher,
